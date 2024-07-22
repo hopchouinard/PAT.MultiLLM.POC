@@ -1,5 +1,3 @@
-# llm_providers/aws_bedrock_provider.py
-
 import boto3
 import json
 from botocore.exceptions import ClientError
@@ -26,7 +24,7 @@ class AWSBedrockProvider(LLMProvider):
             logger.error("AWS credentials or region not found in configuration")
             raise ValueError("AWS credentials or region not found in configuration")
         
-        self.bedrock_runtime = boto3.client(
+        self.bedrock_client = boto3.client(
             service_name='bedrock-runtime',
             region_name=self.region_name,
             aws_access_key_id=self.aws_access_key_id,
@@ -62,14 +60,14 @@ class AWSBedrockProvider(LLMProvider):
                 "top_p": 1,
             })
 
-            response = self.bedrock_runtime.invoke_model(
+            response = self.bedrock_client.invoke_model(
                 body=body,
                 modelId=model_id,
                 accept='application/json',
                 contentType='application/json'
             )
 
-            response_body = json.loads(response.get('body').read())
+            response_body = json.loads(response['body'].read())
             return response_body.get('completion', '').strip()
         except ClientError as e:
             logger.error(f"AWS Bedrock API error: {str(e)}", exc_info=True)
@@ -105,14 +103,14 @@ class AWSBedrockProvider(LLMProvider):
                 "top_p": 1,
             })
 
-            response = self.bedrock_runtime.invoke_model_with_response_stream(
+            response = self.bedrock_client.invoke_model_with_response_stream(
                 body=body,
                 modelId=model_id,
                 accept='application/json',
                 contentType='application/json'
             )
 
-            for event in response.get('body'):
+            for event in response['body']:
                 chunk = json.loads(event['chunk']['bytes'])
                 if 'completion' in chunk:
                     yield chunk['completion']
@@ -145,14 +143,14 @@ class AWSBedrockProvider(LLMProvider):
                 "inputText": text
             })
 
-            response = self.bedrock_runtime.invoke_model(
+            response = self.bedrock_client.invoke_model(
                 body=body,
                 modelId=model_id,
                 accept='application/json',
                 contentType='application/json'
             )
 
-            response_body = json.loads(response.get('body').read())
+            response_body = json.loads(response['body'].read())
             return response_body.get('embedding', [])
         except ClientError as e:
             logger.error(f"AWS Bedrock API embedding error: {str(e)}", exc_info=True)
@@ -193,14 +191,14 @@ class AWSBedrockProvider(LLMProvider):
                 "top_p": 1,
             })
 
-            response = self.bedrock_runtime.invoke_model(
+            response = self.bedrock_client.invoke_model(
                 body=body,
                 modelId=model_id,
                 accept='application/json',
                 contentType='application/json'
             )
 
-            response_body = json.loads(response.get('body').read())
+            response_body = json.loads(response['body'].read())
             return {
                 "role": "assistant",
                 "content": response_body.get('completion', '').strip(),

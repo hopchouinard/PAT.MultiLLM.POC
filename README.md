@@ -1,11 +1,10 @@
-# PAT.MultiLLM.POC
 # LLM API Manager
 
-LLM API Manager is a powerful and flexible command-line tool for interacting with multiple Language Model (LLM) providers. It provides a unified interface for text generation, embeddings, and chat functionalities across various LLM APIs.
+LLM API Manager is a powerful and flexible tool for interacting with multiple Language Model (LLM) providers. It provides a unified interface for text generation, embeddings, and chat functionalities across various LLM APIs, both through a command-line interface and as a Python library.
 
 ## Features
 
-- Support for multiple LLM providers (OpenAI, Anthropic, Google's Gemini, Ollama, LM Studio)
+- Support for multiple LLM providers (OpenAI, Anthropic, Google's Gemini, Ollama, LM Studio, Azure OpenAI, AWS Bedrock)
 - Text generation with customizable parameters
 - Embedding generation
 - Interactive chat mode with conversation history
@@ -13,14 +12,14 @@ LLM API Manager is a powerful and flexible command-line tool for interacting wit
 - Streaming output for real-time text generation
 - Progress bar for batch processing tasks
 - Error handling and automatic retries for failed API calls
-- Configuration management via command-line
+- Configuration management via command-line and programmatic interface
 - Logging with customizable log levels
 
 ## Installation
 
 1. Clone the repository:
    ```
-   git clone https://github.com/hopchouinard/PAT.MULTILLM.POC.git
+   git clone https://github.com/hopchouinard/PAT.MultiLLM.POC.git
    cd llm-api-manager
    ```
 
@@ -35,80 +34,79 @@ LLM API Manager is a powerful and flexible command-line tool for interacting wit
    OPENAI_API_KEY=your_openai_api_key
    ANTHROPIC_API_KEY=your_anthropic_api_key
    GEMINI_API_KEY=your_gemini_api_key
-   OLLAMA_HOST = http://localhost:11434
-   LMSTUDIO_API_BASE = http://localhost:1234/v1
+   AZURE_OPENAI_API_KEY=your_azure_openai_api_key
+   AZURE_OPENAI_API_BASE=your_azure_openai_endpoint
+   AWS_ACCESS_KEY_ID=your_aws_access_key_id
+   AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
+   AWS_REGION_NAME=your_aws_region
+   OLLAMA_HOST=http://localhost:11434
+   LMSTUDIO_API_BASE=http://localhost:1234/v1
    ```
 
-## Usage
+## Command-Line Interface (CLI) Usage
 
-The main script `main.py` provides a command-line interface for interacting with the LLM API Manager. Here are some example use cases:
+The main script `main.py` provides a command-line interface for interacting with the LLM API Manager.
 
-### Text Generation
+### General Command Structure
 
-Generate text using a specific provider:
 ```
-python main.py --providers openai --task generate --input "Explain quantum computing" --max_tokens 150
-```
-
-### Embedding Generation
-
-Create embeddings using multiple providers:
-```
-python main.py --providers openai anthropic --task embed --input "Quantum computing is fascinating"
+python main.py --providers <provider1> <provider2> --task <task> [additional options]
 ```
 
-### Interactive Chat
+### Available Tasks
 
-Start an interactive chat session:
-```
-python main.py --providers anthropic --task chat --interactive --save_chat
-```
+- `generate`: Generate text
+- `embed`: Create embeddings
+- `chat`: Engage in a chat conversation
+- `info`: Get information about providers
+- `config`: View or modify configuration
 
-### Batch Processing
+### Common Options
 
-Process multiple inputs in parallel:
-```
-python main.py --providers openai anthropic --task generate --batch_input inputs.txt --output results.json --parallel
-```
+- `--input`: Input text for generation or embedding
+- `--output`: Output file to save results
+- `--model`: Specific model to use (if applicable)
+- `--max_tokens`: Maximum number of tokens to generate
+- `--temperature`: Temperature for text generation
+- `--log_level`: Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+- `--interactive`: Enable interactive mode for chat
+- `--stream`: Enable streaming output for generation
+- `--batch_input`: File containing multiple inputs for batch processing
+- `--parallel`: Enable parallel processing for batch inputs
 
-### Configuration Management
+### Examples
 
-View or modify configuration settings:
-```
-python main.py --task config --config_key openai_api_key
-python main.py --task config --config_key openai_api_key --config_value new_key_here
-```
+1. Generate text using a specific provider:
+   ```
+   python main.py --providers openai --task generate --input "Explain quantum computing" --max_tokens 150
+   ```
 
-## Project Structure
+2. Create embeddings using multiple providers:
+   ```
+   python main.py --providers openai anthropic --task embed --input "Quantum computing is fascinating"
+   ```
 
-- `main.py`: The main script that provides the command-line interface.
-- `llm_manager.py`: Contains the `LLMManager` class that orchestrates interactions with different LLM providers.
-- `llm_providers/`: Directory containing individual provider implementations.
-- `utils/`: Directory containing utility modules for configuration, logging, etc.
+3. Start an interactive chat session:
+   ```
+   python main.py --providers anthropic --task chat --interactive
+   ```
 
-## Contributing
+4. Process multiple inputs in parallel:
+   ```
+   python main.py --providers openai anthropic --task generate --batch_input inputs.txt --output results.json --parallel
+   ```
 
-Contributions to the LLM API Manager are welcome! Please follow these steps to contribute:
+5. View or modify configuration:
+   ```
+   python main.py --task config --config_key openai_api_key
+   python main.py --task config --config_key openai_api_key --config_value new_key_here
+   ```
 
-1. Fork the repository.
-2. Create a new branch for your feature or bug fix.
-3. Make your changes and commit them with clear, descriptive messages.
-4. Push your changes to your fork.
-5. Submit a pull request to the main repository.
+## Programmatic Usage
 
-Please ensure your code adheres to the project's coding standards and include tests for new functionalities.
+The LLM API Manager can also be used as a Python library in your projects.
 
-# LLM API Manager
-
-## API Documentation
-
-The LLM API Manager can be used as a module in your Python projects. Here's how to use its main components programmatically:
-
-### LLMManager Class
-
-The `LLMManager` class is the main interface for interacting with different LLM providers.
-
-#### Initialization
+### Initialization
 
 ```python
 from llm_manager import LLMManager
@@ -120,7 +118,7 @@ manager = LLMManager(providers=["openai", "anthropic"])
 manager = LLMManager()
 ```
 
-#### Text Generation
+### Text Generation
 
 ```python
 results = manager.generate(
@@ -133,12 +131,12 @@ results = manager.generate(
 
 for provider, result in results.items():
     if result['status'] == 'success':
-        print(f"{provider} response: {result['response']}")
+        print(f"{provider} response: {result['result']}")
     else:
         print(f"{provider} error: {result['error']}")
 ```
 
-#### Streaming Text Generation
+### Streaming Text Generation
 
 ```python
 for chunk in manager.generate_stream(
@@ -153,7 +151,7 @@ for chunk in manager.generate_stream(
         print(f"\nError: {chunk['error']}")
 ```
 
-#### Embedding Generation
+### Embedding Generation
 
 ```python
 results = manager.embed(
@@ -164,12 +162,12 @@ results = manager.embed(
 
 for provider, result in results.items():
     if result['status'] == 'success':
-        print(f"{provider} embedding dimension: {len(result['embedding'])}")
+        print(f"{provider} embedding dimension: {len(result['result'])}")
     else:
         print(f"{provider} error: {result['error']}")
 ```
 
-#### Chat Functionality
+### Chat Functionality
 
 ```python
 chat_history = [
@@ -187,77 +185,58 @@ results = manager.chat(
 
 for provider, result in results.items():
     if result['status'] == 'success':
-        print(f"{provider} response: {result['response']['content']}")
+        print(f"{provider} response: {result['result']['content']}")
     else:
         print(f"{provider} error: {result['error']}")
 ```
 
-#### Parallel Processing
+### Parallel Processing
 
 ```python
-inputs = ["Explain quantum computing", "Describe machine learning", "What is artificial intelligence?"]
+prompts = ["Explain quantum computing", "Describe machine learning", "What is artificial intelligence?"]
 
-results = manager.generate_parallel(
-    prompts=inputs,
-    max_tokens=100,
-    temperature=0.7
-)
+results = manager.generate_parallel(prompt=prompts, max_tokens=100, temperature=0.7)
 
-for input_text, result in zip(inputs, results):
-    print(f"Input: {input_text}")
+for prompt, result in zip(prompts, results.values()):
+    print(f"Prompt: {prompt}")
     for provider, response in result.items():
         if response['status'] == 'success':
-            print(f"  {provider} response: {response['response']}")
+            print(f"  {provider} response: {response['result']}")
         else:
             print(f"  {provider} error: {response['error']}")
     print("-" * 40)
 ```
 
-### Provider-Specific Classes
-
-Each LLM provider has its own class that inherits from the `LLMProvider` base class. These can be used directly if you need provider-specific functionality:
+### Getting Provider Information
 
 ```python
-from llm_providers import OpenAIProvider, AnthropicProvider
-
-openai_provider = OpenAIProvider()
-anthropic_provider = AnthropicProvider()
-
-openai_response = openai_provider.generate("Explain quantum computing")
-anthropic_response = anthropic_provider.generate("Explain quantum computing")
-```
-
-### Utility Functions
-
-The `utils` module provides several utility functions:
-
-```python
-from utils import get_config, set_log_level, logger
-
-# Get configuration
-config = get_config()
-api_key = config.get('openai_api_key')
-
-# Set log level
-set_log_level('DEBUG')
-
-# Use logger
-logger.info("This is an info message")
-logger.error("This is an error message")
+info = manager.get_provider_info()
+print(json.dumps(info, indent=2))
 ```
 
 ## Error Handling
 
-The LLM API Manager uses exception handling to manage errors. When using the `LLMManager` class, errors are typically returned in the result dictionary with a 'status' of 'error'. When using provider classes directly, exceptions may be raised and should be caught and handled in your code.
+The LLM API Manager uses a standardized approach to error handling. All methods return a dictionary with a 'status' key, which is either 'success' or 'error'. In case of an error, an 'error' key is included with the error message.
 
-```python
-try:
-    result = openai_provider.generate("Explain quantum computing")
-except Exception as e:
-    print(f"An error occurred: {str(e)}")
-```
+## Extending the LLM API Manager
 
-For more detailed information about each class and method, please refer to the inline documentation in the source code.
+To add support for a new LLM provider:
+
+1. Create a new file in the `llm_providers` directory (e.g., `new_provider.py`).
+2. Implement a class that inherits from `LLMProvider` and implements all required methods.
+3. Add the new provider to the `PROVIDER_MAP` in `llm_providers/__init__.py`.
+
+## Contributing
+
+Contributions to the LLM API Manager are welcome! Please follow these steps to contribute:
+
+1. Fork the repository.
+2. Create a new branch for your feature or bug fix.
+3. Make your changes and commit them with clear, descriptive messages.
+4. Push your changes to your fork.
+5. Submit a pull request to the main repository.
+
+Please ensure your code adheres to the project's coding standards and include tests for new functionalities.
 
 ## License
 
@@ -270,10 +249,12 @@ This project makes use of the following open-source libraries:
 - Anthropic AI API
 - Google Generative AI
 - Ollama
+- Boto3 (AWS SDK)
+- Azure OpenAI SDK
 - tqdm
 
 We thank the developers of these libraries for their contributions to the open-source community.
 
 ## Contact
 
-For questions, suggestions, or issues, please open an issue on the GitHub repository or contact the project maintainer at [your-email@example.com].
+For questions, suggestions, or issues, please open an issue on the GitHub repository or contact the project maintainer at [52129156+hopchouinard@users.noreply.github.com].

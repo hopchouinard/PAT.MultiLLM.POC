@@ -1,8 +1,6 @@
-# llm_providers/gemini_provider.py
-
 import google.generativeai as genai
-from google.generativeai.types import GenerationConfig, Content, HarmCategory, HarmBlockThreshold
-from google.api_core import exceptions as google_exceptions
+from google.generativeai.types import SafetySettingDict, HarmCategory, HarmBlockThreshold
+from google.generativeai.generative_models import GenerativeModel
 from typing import List, Dict, Any, Generator
 from .base import LLMProvider
 from utils.config import get_config
@@ -40,25 +38,20 @@ class GeminiProvider(LLMProvider):
             Exception: If there's an error in the API call.
         """
         model_name = kwargs.get('model', 'gemini-1.5-flash')
-        max_tokens = kwargs.get('max_tokens', 150)
         temperature = kwargs.get('temperature', 0.7)
 
         logger.info(f"Generating text with model: {model_name}")
         try:
-            model = genai.GenerativeModel(model_name=model_name)
+            model = GenerativeModel(model_name)
             response = model.generate_content(
                 prompt,
-                generation_config=GenerationConfig(
-                    max_output_tokens=max_tokens,
+                generation_config=genai.types.GenerationConfig(
                     temperature=temperature
                 )
             )
-            return response.text.strip()
-        except google_exceptions.GoogleAPIError as e:
-            logger.error(f"Gemini API error: {str(e)}", exc_info=True)
-            raise
+            return response.text
         except Exception as e:
-            logger.error(f"Unexpected error in Gemini API call: {str(e)}", exc_info=True)
+            logger.error(f"Gemini API error: {str(e)}", exc_info=True)
             raise
 
     def generate_stream(self, prompt: str, **kwargs) -> Generator[str, None, None]:
@@ -76,28 +69,22 @@ class GeminiProvider(LLMProvider):
             Exception: If there's an error in the API call.
         """
         model_name = kwargs.get('model', 'gemini-1.5-flash')
-        max_tokens = kwargs.get('max_tokens', 150)
         temperature = kwargs.get('temperature', 0.7)
 
         logger.info(f"Generating text stream with model: {model_name}")
         try:
-            model = genai.GenerativeModel(model_name=model_name)
+            model = GenerativeModel(model_name)
             response = model.generate_content(
                 prompt,
-                generation_config=GenerationConfig(
-                    max_output_tokens=max_tokens,
+                generation_config=genai.types.GenerationConfig(
                     temperature=temperature
                 ),
                 stream=True
             )
             for chunk in response:
-                if chunk.text:
-                    yield chunk.text
-        except google_exceptions.GoogleAPIError as e:
-            logger.error(f"Gemini API streaming error: {str(e)}", exc_info=True)
-            raise
+                yield chunk.text
         except Exception as e:
-            logger.error(f"Unexpected error in Gemini API streaming call: {str(e)}", exc_info=True)
+            logger.error(f"Gemini API streaming error: {str(e)}", exc_info=True)
             raise
 
     def embed(self, text: str, **kwargs) -> List[float]:
@@ -117,32 +104,11 @@ class GeminiProvider(LLMProvider):
         model_name = kwargs.get('model', 'embedding-001')
         logger.info(f"Generating embedding with model: {model_name}")
         try:
-            model = genai.GenerativeModel(model_name=model_name)
-            embedding = model.embed_content(text)
-            return embedding.values
-        except google_exceptions.GoogleAPIError as e:
+            model = genai.get_model(model_name)
+            result = model.embed_content(text)
+            return result["embedding"]
+        except Exception as e:
             logger.error(f"Gemini embedding error: {str(e)}", exc_info=True)
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error in Gemini embedding: {str(e)}", exc_info=True)
-            raise
-
-    def list_available_models(self) -> List[Dict[str, Any]]:
-        """
-        List available models from Gemini.
-
-        Returns:
-            List[Dict[str, Any]]: A list of available models and their details.
-        """
-        logger.info("Fetching available models from Gemini")
-        try:
-            models = genai.list_models()
-            return [{"name": model.name, "description": model.description} for model in models]
-        except google_exceptions.GoogleAPIError as e:
-            logger.error(f"Error fetching Gemini models: {str(e)}", exc_info=True)
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error fetching Gemini models: {str(e)}", exc_info=True)
             raise
 
     def chat(self, messages: List[Dict[str, str]], **kwargs) -> Dict[str, Any]:
@@ -161,39 +127,51 @@ class GeminiProvider(LLMProvider):
             Exception: If there's an error in the API call.
         """
         model_name = kwargs.get('model', 'gemini-1.5-flash')
-        max_tokens = kwargs.get('max_tokens', 150)
         temperature = kwargs.get('temperature', 0.7)
 
         logger.info(f"Starting chat with model: {model_name}")
         try:
-            model = genai.GenerativeModel(model_name=model_name)
+            model = GenerativeModel(model_name)
             chat = model.start_chat(history=[])
             
             for message in messages:
-                if message['role'] == 'user':
-                    chat.send_message(Content(parts=[message['parts']]))
+                role = message['role']
+                content = message['content']
+                if role == 'user':
+                    chat.send_message(content)
                 else:
                     # Add model messages to chat history
-                    chat.history.append(Content(role="model", parts=[message['parts']]))
+                    chat.history.append({"role": "model", "parts": [content]})
 
             response = chat.send_message(
-                Content(parts=[messages[-1]['parts']]),
-                generation_config=GenerationConfig(
-                    max_output_tokens=max_tokens,
+                messages[-1]['content'],
+                generation_config=genai.types.GenerationConfig(
                     temperature=temperature
                 )
             )
             
             return {
                 "role": "model",
-                "parts": response.text,
+                "content": response.text,
                 "model": model_name,
             }
-        except google_exceptions.GoogleAPIError as e:
+        except Exception as e:
             logger.error(f"Gemini API chat error: {str(e)}", exc_info=True)
             raise
+
+    def list_available_models(self) -> List[Dict[str, Any]]:
+        """
+        List available models from Gemini.
+
+        Returns:
+            List[Dict[str, Any]]: A list of available models and their details.
+        """
+        logger.info("Fetching available models from Gemini")
+        try:
+            models = genai.list_models()
+            return [{"name": model.name, "description": model.description} for model in models]
         except Exception as e:
-            logger.error(f"Unexpected error in Gemini API chat call: {str(e)}", exc_info=True)
+            logger.error(f"Error fetching Gemini models: {str(e)}", exc_info=True)
             raise
 
     def set_safety_settings(self, **kwargs) -> None:
@@ -211,7 +189,7 @@ class GeminiProvider(LLMProvider):
                 dangerous_content=HarmBlockThreshold.MEDIUM_AND_ABOVE
             )
         """
-        safety_settings = []
+        safety_settings: List[SafetySettingDict] = []
         for category, threshold in kwargs.items():
             if category in HarmCategory.__members__:
                 safety_settings.append({

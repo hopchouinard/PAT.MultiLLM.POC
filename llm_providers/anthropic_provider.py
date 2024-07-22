@@ -1,5 +1,3 @@
-# llm_providers/anthropic_provider.py
-
 import anthropic
 from typing import List, Dict, Any, Generator
 from .base import LLMProvider
@@ -45,11 +43,11 @@ class AnthropicProvider(LLMProvider):
         try:
             response = self.client.completions.create(
                 model=model,
-                prompt=f"{anthropic.HUMAN_PROMPT} {prompt}{anthropic.AI_PROMPT}",
+                prompt=prompt,
                 max_tokens_to_sample=max_tokens,
                 temperature=temperature
             )
-            return response.completion.strip()
+            return response.completion
         except anthropic.APIError as e:
             logger.error(f"Anthropic API error: {str(e)}", exc_info=True)
             raise
@@ -77,16 +75,15 @@ class AnthropicProvider(LLMProvider):
 
         logger.info(f"Generating text stream with model: {model}")
         try:
-            stream = self.client.completions.create(
+            with self.client.completions.create(
                 model=model,
-                prompt=f"{anthropic.HUMAN_PROMPT} {prompt}{anthropic.AI_PROMPT}",
+                prompt=prompt,
                 max_tokens_to_sample=max_tokens,
                 temperature=temperature,
                 stream=True
-            )
-            for chunk in stream:
-                if chunk.completion:
-                    yield chunk.completion
+            ) as stream:
+                for completion in stream:
+                    yield completion.completion
         except anthropic.APIError as e:
             logger.error(f"Anthropic API streaming error: {str(e)}", exc_info=True)
             raise
@@ -110,30 +107,6 @@ class AnthropicProvider(LLMProvider):
         """
         logger.warning("Embedding not currently supported for Anthropic")
         raise NotImplementedError("Embedding not currently supported for Anthropic")
-
-    def list_available_models(self) -> List[Dict[str, Any]]:
-        """
-        List available models from Anthropic.
-
-        Returns:
-            List[Dict[str, Any]]: A list of available models and their details.
-
-        Note:
-            As of my last update, Anthropic doesn't provide a public API to list models.
-            This method returns a hardcoded list of known models.
-        """
-        logger.info("Fetching available models from Anthropic")
-        # As Anthropic doesn't provide a public API to list models,
-        # we're returning a hardcoded list of known models.
-        models = [
-            {"id": "claude-3-5-sonnet-20240620", "description": "Most advanced model, outperforming its predecessors, with a perfect blend of intelligence and speed."},
-            {"id": "claude-3-opus-20240229", "description": "Most capable model for complex tasks"},
-            {"id": "claude-3-sonnet-20240229", "description": "Ideal balance of intelligence and speed"},
-            {"id": "claude-3-haiku-20240307", "description": "Fastest model, best for simple tasks and back-and-forth"},
-            {"id": "claude-2.1", "description": "Powerful model for a wide range of tasks"},
-            {"id": "claude-instant-1.2", "description": "Faster and more compact model for simpler tasks"}
-        ]
-        return models
 
     def chat(self, messages: List[Dict[str, str]], **kwargs) -> Dict[str, Any]:
         """
@@ -160,7 +133,7 @@ class AnthropicProvider(LLMProvider):
                 model=model,
                 max_tokens=max_tokens,
                 temperature=temperature,
-                messages=messages
+                messages=[{"role": msg["role"], "content": msg["content"]} for msg in messages]
             )
             return {
                 "role": "assistant",
@@ -174,3 +147,27 @@ class AnthropicProvider(LLMProvider):
         except Exception as e:
             logger.error(f"Unexpected error in Anthropic API chat call: {str(e)}", exc_info=True)
             raise
+
+    def list_available_models(self) -> List[Dict[str, Any]]:
+        """
+        List available models from Anthropic.
+
+        Returns:
+            List[Dict[str, Any]]: A list of available models and their details.
+
+        Note:
+            As of my last update, Anthropic doesn't provide a public API to list models.
+            This method returns a hardcoded list of known models.
+        """
+        logger.info("Fetching available models from Anthropic")
+        # As Anthropic doesn't provide a public API to list models,
+        # we're returning a hardcoded list of known models.
+        models = [
+            {"id": "claude-3-5-sonnet-20240620", "description": "Most advanced model, outperforming its predecessors, with a perfect blend of intelligence and speed."},
+            {"id": "claude-3-opus-20240229", "description": "Most capable model for complex tasks"},
+            {"id": "claude-3-sonnet-20240229", "description": "Ideal balance of intelligence and speed"},
+            {"id": "claude-3-haiku-20240307", "description": "Fastest model, best for simple tasks and back-and-forth"},
+            {"id": "claude-2.1", "description": "Powerful model for a wide range of tasks"},
+            {"id": "claude-instant-1.2", "description": "Faster and more compact model for simpler tasks"}
+        ]
+        return models

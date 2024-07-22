@@ -1,5 +1,3 @@
-# llm_manager.py
-
 from typing import List, Dict, Any, Generator
 from llm_providers import get_provider, list_supported_providers, LLMProvider
 from utils import logger, get_config
@@ -31,6 +29,26 @@ class LLMManager:
             except Exception as e:
                 logger.error(f"Failed to initialize {provider_name} provider: {str(e)}")
 
+    def _handle_provider_operation(self, provider: str, operation: str, *args, **kwargs) -> Dict[str, Any]:
+        """
+        Helper method to handle provider operations with standardized exception handling.
+
+        Args:
+            provider (str): The name of the provider.
+            operation (str): The name of the operation to perform.
+            *args: Positional arguments for the operation.
+            **kwargs: Keyword arguments for the operation.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the operation result and status.
+        """
+        try:
+            result = getattr(self.providers[provider], operation)(*args, **kwargs)
+            return {"result": result, "status": "success"}
+        except Exception as e:
+            logger.error(f"Error in {provider} {operation}: {str(e)}", exc_info=True)
+            return {"result": None, "status": "error", "error": str(e)}
+
     def generate(self, prompt: str, provider: str = None, **kwargs) -> Dict[str, Any]:
         """
         Generate text using the specified provider or all providers.
@@ -50,12 +68,7 @@ class LLMManager:
         results = {}
 
         for prov in providers_to_use:
-            try:
-                response = self.providers[prov].generate(prompt, **kwargs)
-                results[prov] = {"response": response, "status": "success"}
-            except Exception as e:
-                logger.error(f"Error in {prov} generate: {str(e)}")
-                results[prov] = {"response": None, "status": "error", "error": str(e)}
+            results[prov] = self._handle_provider_operation(prov, "generate", prompt, **kwargs)
 
         return results
 
@@ -82,7 +95,7 @@ class LLMManager:
             for chunk in self.providers[provider_to_use].generate_stream(prompt, **kwargs):
                 yield {"provider": provider_to_use, "chunk": chunk, "status": "success"}
         except Exception as e:
-            logger.error(f"Error in {provider_to_use} generate_stream: {str(e)}")
+            logger.error(f"Error in {provider_to_use} generate_stream: {str(e)}", exc_info=True)
             yield {"provider": provider_to_use, "chunk": None, "status": "error", "error": str(e)}
 
     def embed(self, text: str, provider: str = None, **kwargs) -> Dict[str, Any]:
@@ -104,12 +117,7 @@ class LLMManager:
         results = {}
 
         for prov in providers_to_use:
-            try:
-                embedding = self.providers[prov].embed(text, **kwargs)
-                results[prov] = {"embedding": embedding, "status": "success"}
-            except Exception as e:
-                logger.error(f"Error in {prov} embed: {str(e)}")
-                results[prov] = {"embedding": None, "status": "error", "error": str(e)}
+            results[prov] = self._handle_provider_operation(prov, "embed", text, **kwargs)
 
         return results
 
@@ -133,12 +141,7 @@ class LLMManager:
         results = {}
 
         for prov in providers_to_use:
-            try:
-                response = self.providers[prov].chat(messages, **kwargs)
-                results[prov] = {"response": response, "status": "success"}
-            except Exception as e:
-                logger.error(f"Error in {prov} chat: {str(e)}")
-                results[prov] = {"response": None, "status": "error", "error": str(e)}
+            results[prov] = self._handle_provider_operation(prov, "chat", messages, **kwargs)
 
         return results
 
@@ -155,16 +158,11 @@ class LLMManager:
         """
         results = {}
         with ThreadPoolExecutor(max_workers=len(self.providers)) as executor:
-            future_to_provider = {executor.submit(provider.generate, prompt, **kwargs): name 
-                                  for name, provider in self.providers.items()}
+            future_to_provider = {executor.submit(self._handle_provider_operation, name, "generate", prompt, **kwargs): name 
+                                for name in self.providers.keys()}
             for future in as_completed(future_to_provider):
                 provider_name = future_to_provider[future]
-                try:
-                    response = future.result()
-                    results[provider_name] = {"response": response, "status": "success"}
-                except Exception as e:
-                    logger.error(f"Error in {provider_name} generate: {str(e)}")
-                    results[provider_name] = {"response": None, "status": "error", "error": str(e)}
+                results[provider_name] = future.result()
         return results
 
     def get_provider_info(self, provider: str = None) -> Dict[str, Any]:
@@ -194,37 +192,7 @@ class LLMManager:
                 if hasattr(provider_instance, 'list_available_models'):
                     info[prov]["available_models"] = provider_instance.list_available_models()
             except Exception as e:
-                logger.error(f"Error getting info for {prov}: {str(e)}")
+                logger.error(f"Error getting info for {prov}: {str(e)}", exc_info=True)
                 info[prov] = {"error": str(e)}
 
         return info
-
-# Example usage
-if __name__ == "__main__":
-    manager = LLMManager(["openai", "anthropic"])
-    
-    # Generate text
-    results = manager.generate("Explain the concept of quantum computing in simple terms.")
-    for provider, result in results.items():
-        print(f"{provider}: {result['response']}")
-
-    # Generate embeddings
-    embed_results = manager.embed("Quantum computing is fascinating.")
-    for provider, result in embed_results.items():
-        if result['status'] == 'success':
-            print(f"{provider} embedding dimension: {len(result['embedding'])}")
-
-    # Chat
-    chat_messages = [
-        {"role": "user", "content": "What is the capital of France?"},
-        {"role": "assistant", "content": "The capital of France is Paris."},
-        {"role": "user", "content": "What's a famous landmark there?"}
-    ]
-    chat_results = manager.chat(chat_messages)
-    for provider, result in chat_results.items():
-        if result['status'] == 'success':
-            print(f"{provider} response: {result['response']['content']}")
-
-    # Get provider info
-    provider_info = manager.get_provider_info()
-    print("Provider Info:", provider_info)
