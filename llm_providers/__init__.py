@@ -7,6 +7,8 @@ from .anthropic_provider import AnthropicProvider
 from .gemini_provider import GeminiProvider
 from .ollama_provider import OllamaProvider
 from .lmstudio_provider import LMStudioProvider
+from .azure_openai_provider import AzureOpenAIProvider
+from .aws_bedrock_provider import AWSBedrockProvider
 from utils.logging import logger
 
 # Dictionary mapping provider names to their respective classes
@@ -15,7 +17,9 @@ PROVIDER_MAP: Dict[str, Type[LLMProvider]] = {
     "anthropic": AnthropicProvider,
     "gemini": GeminiProvider,
     "ollama": OllamaProvider,
-    "lmstudio": LMStudioProvider
+    "lmstudio": LMStudioProvider,
+    "azure_openai": AzureOpenAIProvider,
+    "aws_bedrock": AWSBedrockProvider
 }
 
 def get_provider(provider_name: str) -> LLMProvider:
@@ -50,7 +54,7 @@ def list_supported_providers() -> list[str]:
     return list(PROVIDER_MAP.keys())
 
 # Version of the llm_providers package
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 # Export the LLMProvider base class and all provider classes
 __all__ = [
@@ -60,6 +64,8 @@ __all__ = [
     "GeminiProvider",
     "OllamaProvider",
     "LMStudioProvider",
+    "AzureOpenAIProvider",
+    "AWSBedrockProvider",
     "get_provider",
     "list_supported_providers"
 ]

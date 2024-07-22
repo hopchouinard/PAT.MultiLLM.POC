@@ -4,17 +4,11 @@ import argparse
 import json
 import sys
 from typing import List, Dict
+from datetime import datetime
 from llm_manager import LLMManager
 from utils import logger, set_log_level, get_config, Config
-import os
-from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
-import time
-import random
-
-MAX_RETRIES = 3
-RETRY_DELAY = 2  # seconds
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="LLM API Manager")
@@ -34,6 +28,13 @@ def parse_arguments():
     parser.add_argument("--config_value", help="New value for the configuration key")
     parser.add_argument("--save_chat", action="store_true", help="Save chat history in interactive mode")
     parser.add_argument("--parallel", action="store_true", help="Enable parallel processing for batch inputs")
+    
+    # Azure OpenAI specific arguments
+    parser.add_argument("--azure_deployment", help="Azure OpenAI deployment name")
+    
+    # AWS Bedrock specific arguments
+    parser.add_argument("--aws_model_id", help="AWS Bedrock model ID")
+    
     return parser.parse_args()
 
 def load_chat_history(file_path: str) -> List[Dict[str, str]]:
@@ -105,28 +106,23 @@ def sequential_batch_process(manager: LLMManager, inputs: List[str], args):
     return results
 
 def parallel_batch_process(manager: LLMManager, inputs: List[str], args):
-    def process_input_with_retry(input_text):
+    def process_input(input_text):
         input_text = input_text.strip()
-        for attempt in range(MAX_RETRIES):
-            try:
-                if args.task == 'generate':
-                    return {"input": input_text, "result": manager.generate(input_text, model=args.model, max_tokens=args.max_tokens, temperature=args.temperature)}
-                elif args.task == 'embed':
-                    return {"input": input_text, "result": manager.embed(input_text, model=args.model)}
-            except Exception as e:
-                if attempt < MAX_RETRIES - 1:
-                    logger.warning(f"Attempt {attempt + 1} failed for input: {input_text}. Retrying...")
-                    time.sleep(RETRY_DELAY * (2 ** attempt))  # Exponential backoff
-                else:
-                    logger.error(f"All attempts failed for input: {input_text}. Error: {str(e)}")
-                    return {"input": input_text, "error": str(e)}
+        if args.task == 'generate':
+            return {"input": input_text, "result": manager.generate(input_text, model=args.model, max_tokens=args.max_tokens, temperature=args.temperature)}
+        elif args.task == 'embed':
+            return {"input": input_text, "result": manager.embed(input_text, model=args.model)}
     
     results = []
     with ThreadPoolExecutor() as executor:
-        future_to_input = {executor.submit(process_input_with_retry, input_text): input_text for input_text in inputs}
+        future_to_input = {executor.submit(process_input, input_text): input_text for input_text in inputs}
         for future in tqdm(as_completed(future_to_input), total=len(inputs), desc="Processing inputs"):
-            result = future.result()
-            results.append(result)
+            try:
+                result = future.result()
+                results.append(result)
+            except Exception as e:
+                input_text = future_to_input[future]
+                results.append({"input": input_text, "error": str(e)})
     
     return results
 
@@ -151,6 +147,14 @@ def main():
     if args.task == "config":
         handle_config(config, args)
         return
+
+    # If Azure OpenAI is specified, set the deployment name in the config
+    if "azure_openai" in args.providers and args.azure_deployment:
+        config.set("azure_openai_deployment", args.azure_deployment)
+
+    # If AWS Bedrock is specified, set the model ID in the config
+    if "aws_bedrock" in args.providers and args.aws_model_id:
+        config.set("aws_bedrock_model_id", args.aws_model_id)
 
     manager = LLMManager(args.providers)
 

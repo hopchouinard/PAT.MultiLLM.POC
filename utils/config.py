@@ -37,6 +37,12 @@ class Config:
             'gemini_api_key': os.getenv('GEMINI_API_KEY'),
             'ollama_host': os.getenv('OLLAMA_HOST', 'http://localhost:11434'),
             'lmstudio_api_base': os.getenv('LMSTUDIO_API_BASE', 'http://localhost:1234/v1'),
+            'azure_openai_api_key': os.getenv('AZURE_OPENAI_API_KEY'),
+            'azure_openai_api_base': os.getenv('AZURE_OPENAI_API_BASE'),
+            'azure_openai_api_version': os.getenv('AZURE_OPENAI_API_VERSION', '2023-05-15'),
+            'aws_region_name': os.getenv('AWS_REGION_NAME'),
+            'aws_access_key_id': os.getenv('AWS_ACCESS_KEY_ID'),
+            'aws_secret_access_key': os.getenv('AWS_SECRET_ACCESS_KEY'),
             'log_level': os.getenv('LOG_LEVEL', 'INFO'),
         }
         
@@ -108,6 +114,9 @@ def get_config() -> Config:
 if __name__ == "__main__":
     config = get_config()
     print("OpenAI API Key:", config.get("openai_api_key"))
+    print("Azure OpenAI API Key:", config.get("azure_openai_api_key"))
+    print("Azure OpenAI API Base:", config.get("azure_openai_api_base"))
+    print("Azure OpenAI API Version:", config.get("azure_openai_api_version"))
     print("Log Level:", config.get("log_level"))
     
     # Set a new configuration value

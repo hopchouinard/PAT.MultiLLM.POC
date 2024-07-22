@@ -10,6 +10,9 @@ anthropic==0.7.4
 google-generativeai==0.3.1
 ollama==0.1.5
 
+# AWS SDK for Bedrock
+boto3==1.34.2
+
 # Utility Libraries
 tqdm==4.66.1
 colorama==0.4.6  # For colored terminal output
@@ -42,3 +45,15 @@ cryptography==41.0.5  # For handling API keys securely
 black==23.11.0  # Code formatter
 flake8==6.1.0  # Linter
 isort==5.12.0  # Import sorter
+
+# Web framework (for potential future GUI development)
+flask==3.0.0
+
+# JSON handling
+ujson==5.8.0  # Faster JSON processing
+
+# Environment management
+pipenv==2023.11.15
+
+# Documentation
+sphinx==7.2.6
