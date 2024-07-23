@@ -1,0 +1,42 @@
+LLM API Manager/
+│
+├── llm_providers/
+│   ├── __init__.py
+│   ├── base.py
+│   ├── openai_provider.py
+│   ├── anthropic_provider.py
+│   ├── gemini_provider.py
+│   ├── ollama_provider.py
+│   ├── lmstudio_provider.py
+│   ├── azure_openai_provider.py
+│   └── aws_bedrock_provider.py
+│
+├── utils/
+│   ├── __init__.py
+│   ├── config.py
+│   └── logging.py
+│
+├── tests/
+│   ├── unit/
+│   │   ├── test_providers/
+│   │   │   ├── test_openai_provider.py
+│   │   │   ├── test_anthropic_provider.py
+│   │   │   ├── test_gemini_provider.py
+│   │   │   ├── test_ollama_provider.py
+│   │   │   ├── test_lmstudio_provider.py
+│   │   │   ├── test_azure_openai_provider.py
+│   │   │   └── test_aws_bedrock_provider.py
+│   │   └── test_utils/
+│   │       ├── test_config.py
+│   │       └── test_logging.py
+│   ├── integration/
+│   │   ├── test_llm_manager_integration.py
+│   │   └── test_provider_integration.py
+│   ├── end_to_end/
+│   |   └── test_cli.py
+|   └──conftest.py
+│
+├── llm_manager.py
+├── main.py
+├── README.md
+└── requirements.txt
